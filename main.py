@@ -28,7 +28,18 @@ def get_price(ticker: str):
         return {"ok": True, "ticker": ticker.upper(), "data": data}
     except Exception as e:
         return {"ok": False, "error": str(e)}
-
+@app.get("/debug/{ticker}")
+def debug_fundamental(ticker: str):
+    try:
+        stock = Vnstock().stock(symbol=ticker.upper(), source='VCI')
+        df = stock.finance.ratio(period='year', lang='vi')
+        return {
+            "columns": [str(c) for c in df.columns.tolist()],
+            "shape": list(df.shape),
+            "sample": df.tail(2).to_dict(orient='records')
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
