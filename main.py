@@ -40,6 +40,39 @@ def debug_fundamental(ticker: str):
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
+        @app.get("/try/{ticker}")
+def try_fundamental(ticker: str):
+    result = {}
+    tk = ticker.upper()
+
+    # Cách 1: company overview (thường có P/E, P/B)
+    try:
+        stock = Vnstock().stock(symbol=tk, source='TCBS')
+        ov = stock.company.overview()
+        result["overview_TCBS"] = ov.to_dict(orient='records')
+    except Exception as e:
+        result["overview_TCBS_error"] = str(e)
+
+    # Cách 2: price board (bảng giá có nhiều chỉ số)
+    try:
+        stock = Vnstock().stock(symbol=tk, source='VCI')
+        pb = stock.trading.price_board([tk])
+        result["price_board"] = pb.to_dict(orient='records')
+    except Exception as e:
+        result["price_board_error"] = str(e)
+
+    # Cách 3: ratio nhưng lấy cột 2 gần nhất, xoay lại
+    try:
+        stock = Vnstock().stock(symbol=tk, source='VCI')
+        df = stock.finance.ratio(period='year', lang='en')
+        # Lọc vài chỉ số định giá phổ biến theo item_id
+        keys = ['pe','pb','roe','roa','eps','marketCap']
+        rows = df[df['item_id'].isin(keys)] if 'item_id' in df.columns else df.head(0)
+        result["ratio_filtered"] = rows.to_dict(orient='records')
+    except Exception as e:
+        result["ratio_filtered_error"] = str(e)
+
+    return result
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
